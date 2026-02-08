@@ -21,7 +21,7 @@ Shows git branch, directory, model, usage limits, and context window — all in 
 ## Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ccbar.git ~/.ccbar
+git clone https://github.com/taras-mrtn/ccbar.git ~/.ccbar
 python3 ~/.ccbar/ccbar.py --install
 ```
 
