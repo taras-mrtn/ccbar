@@ -2,6 +2,7 @@
 """ccbar — configurable status line for Claude Code."""
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -9,6 +10,21 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
+
+def _enable_ansi_windows():
+    """Enable ANSI escape code processing on Windows."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
+        mode = ctypes.c_ulong()
+        kernel32.GetConsoleMode(handle, ctypes.byref(mode))
+        kernel32.SetConsoleMode(handle, mode.value | 0x0004)  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+    except Exception:
+        pass
+
 
 DIM = "\033[2m"
 RESET = "\033[0m"
@@ -47,6 +63,7 @@ BAR_STYLES = {
     "parallelogram": ("\u25b0", "\u25b1"),  # ▰ ▱
     "pipes": ("\u2503", "\u254c"),          # ┃ ╌
     "braille": ("\u28ff", "\u2880"),        # ⣿ ⢀
+    "ascii": ("#", "-"),                    # # -
 }
 
 THEMES = {
@@ -160,7 +177,11 @@ def fetch_usage(token):
 # --- Cache ---
 
 def get_cache_path():
-    cache_dir = Path.home() / ".cache" / "ccbar"
+    if sys.platform == "win32":
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+        cache_dir = base / "ccbar"
+    else:
+        cache_dir = Path.home() / ".cache" / "ccbar"
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir / "cache.json"
 
@@ -384,9 +405,10 @@ def install():
         except (json.JSONDecodeError, OSError):
             pass
 
+    python_cmd = sys.executable
     settings["statusLine"] = {
         "type": "command",
-        "command": f'python3 "{script_path}"',
+        "command": f'"{python_cmd}" "{script_path}"',
     }
 
     settings_path.parent.mkdir(parents=True, exist_ok=True)
@@ -394,7 +416,7 @@ def install():
         json.dump(settings, f, indent=2)
 
     print(f"Installed ccbar to {settings_path}")
-    print(f"Command: python3 \"{script_path}\"")
+    print(f"Command: \"{python_cmd}\" \"{script_path}\"")
     print("Restart Claude Code to see the status line.")
 
 
@@ -417,6 +439,8 @@ def parse_argv(argv):
 
 
 def main():
+    _enable_ansi_windows()
+
     if "--install" in sys.argv:
         install()
         return
