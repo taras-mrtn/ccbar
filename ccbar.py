@@ -103,7 +103,7 @@ DEFAULT_CONFIG = {
     "cache_ttl": 30,
     "update_check": True,
     "update_interval": UPDATE_CHECK_INTERVAL,
-    "sections": ["git", "cwd", "model", "session", "weekly", "context", "credits", "plan", "update"],
+    "sections": ["git", "cwd", "model", "session", "weekly", "context", "credits", "plan"],
 }
 
 
@@ -460,13 +460,6 @@ def render_plan(usage, plan, ctx, cfg):
     return plan or None
 
 
-def render_update(usage, plan, ctx, cfg):
-    latest = check_for_update(cfg)
-    if not latest:
-        return None
-    return f"{DIM}ccbar update available{RESET}"
-
-
 RENDERERS = {
     "git": render_git,
     "cwd": render_cwd,
@@ -476,7 +469,6 @@ RENDERERS = {
     "context": render_context,
     "credits": render_credits,
     "plan": render_plan,
-    "update": render_update,
 }
 
 
@@ -488,6 +480,9 @@ def build_status_line(usage, plan, ctx, cfg):
             result = renderer(usage, plan, ctx, cfg)
             if result:
                 parts.append(result)
+    latest = check_for_update(cfg)
+    if latest:
+        parts.append(f"{DIM}ccbar update available{RESET}")
     return " | ".join(parts)
 
 
