@@ -20,9 +20,16 @@ Shows git branch, directory, model, usage limits, and context window — all in 
 
 ## Install
 
+**macOS / Linux:**
 ```bash
 git clone https://github.com/taras-mrtn/ccbar.git ~/.ccbar
 python3 ~/.ccbar/ccbar.py --install
+```
+
+**Windows (PowerShell):**
+```powershell
+git clone https://github.com/taras-mrtn/ccbar.git $HOME\.ccbar
+python $HOME\.ccbar\ccbar.py --install
 ```
 
 Restart Claude Code. That's it.
@@ -31,7 +38,7 @@ Restart Claude Code. That's it.
 
 - Claude Code with an active Pro or Max subscription (OAuth login)
 - Python 3.8+
-- macOS or Linux
+- macOS, Linux, or Windows
 
 ## Configuration
 
@@ -69,6 +76,7 @@ On first run, `config.json` is created next to `ccbar.py`:
 | `parallelogram` | `▰▰▰▱▱▱▱▱` |
 | `pipes` | `┃┃┃╌╌╌╌╌` |
 | `braille` | `⣿⣿⣿⢀⢀⢀⢀⢀` |
+| `ascii` | `###-----` |
 
 ### Themes
 
@@ -151,6 +159,10 @@ echo '{}' | python3 ccbar.py --show session,weekly,context
 # Hide specific sections (overrides config)
 echo '{}' | python3 ccbar.py --hide git,cwd
 ```
+
+## Windows notes
+
+Windows Terminal is recommended. If bar characters don't render correctly, set `"style": "ascii"` in your `config.json`.
 
 ## How it works
 
