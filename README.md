@@ -59,6 +59,8 @@ On first run, `config.json` is created next to `ccbar.py`:
   },
   "layout": "standard",
   "cache_ttl": 30,
+  "update_check": true,
+  "update_interval": 86400,
   "sections": ["git", "cwd", "model", "session", "weekly", "context", "credits", "plan"]
 }
 ```
