@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """ccbar — configurable status line for Claude Code."""
 
+VERSION = "0.2.0"
+
 import json
 import os
 import subprocess
@@ -440,6 +442,10 @@ def parse_argv(argv):
 
 def main():
     _enable_ansi_windows()
+
+    if "--version" in sys.argv:
+        print(f"ccbar {VERSION}")
+        return
 
     if "--install" in sys.argv:
         install()
