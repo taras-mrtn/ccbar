@@ -144,11 +144,33 @@ Developer — git first, ocean theme:
 }
 ```
 
+### Auto-update
+
+ccbar checks GitHub for new releases once every 24 hours. When an update is available, a dimmed `ccbar update available` message appears at the end of the status bar.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `update_check` | `true` | Enable/disable update checking |
+| `update_interval` | `86400` | Seconds between checks (default 24h) |
+
+To disable:
+```json
+{
+  "update_check": false
+}
+```
+
 ## CLI flags
 
 ```bash
 # Install status line into Claude Code settings
 python3 ccbar.py --install
+
+# Show version (and update availability)
+python3 ccbar.py --version
+
+# Update to latest version
+python3 ccbar.py --update
 
 # Print path to config.json
 python3 ccbar.py --config
