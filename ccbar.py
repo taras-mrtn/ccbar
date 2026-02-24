@@ -84,6 +84,9 @@ PLAN_NAMES = {
     "default_claude_max_20x": "Max 20x",
 }
 
+GITHUB_REPO = "taras-mrtn/ccbar"
+UPDATE_CHECK_INTERVAL = 86400  # 24 hours
+
 DEFAULT_CONFIG = {
     "bar": {
         "style": "default",
@@ -98,7 +101,9 @@ DEFAULT_CONFIG = {
     },
     "layout": "standard",
     "cache_ttl": 30,
-    "sections": ["git", "cwd", "model", "session", "weekly", "context", "credits", "plan"],
+    "update_check": True,
+    "update_interval": UPDATE_CHECK_INTERVAL,
+    "sections": ["git", "cwd", "model", "session", "weekly", "context", "credits", "plan", "update"],
 }
 
 
@@ -127,6 +132,8 @@ def load_config():
     cfg["colors"] = {**DEFAULT_CONFIG["colors"], **theme_colors, **user.get("colors", {})}
     cfg["layout"] = user.get("layout", DEFAULT_CONFIG["layout"])
     cfg["cache_ttl"] = user.get("cache_ttl", DEFAULT_CONFIG["cache_ttl"])
+    cfg["update_check"] = user.get("update_check", DEFAULT_CONFIG["update_check"])
+    cfg["update_interval"] = user.get("update_interval", DEFAULT_CONFIG["update_interval"])
     cfg["sections"] = user.get("sections", DEFAULT_CONFIG["sections"])
     return cfg
 
@@ -205,6 +212,89 @@ def write_cache(path, usage=None, plan=None):
             json.dump({"timestamp": time.time(), "usage": usage, "plan": plan}, f)
     except OSError:
         pass
+
+
+# --- Update check ---
+
+def get_update_cache_path():
+    if sys.platform == "win32":
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+        cache_dir = base / "ccbar"
+    else:
+        cache_dir = Path.home() / ".cache" / "ccbar"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / "update.json"
+
+
+def read_update_cache(path, interval):
+    try:
+        with open(path) as f:
+            cached = json.load(f)
+        if time.time() - cached.get("timestamp", 0) < interval:
+            return cached
+    except Exception:
+        pass
+    return None
+
+
+def write_update_cache(path, latest):
+    try:
+        with open(path, "w") as f:
+            json.dump({"timestamp": time.time(), "latest": latest}, f)
+    except OSError:
+        pass
+
+
+def parse_version(v):
+    try:
+        return tuple(int(x) for x in v.lstrip("v").split("."))
+    except (ValueError, AttributeError):
+        return (0,)
+
+
+def fetch_latest_version():
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest",
+        headers={"Accept": "application/vnd.github+json"},
+    )
+    with urllib.request.urlopen(req, timeout=3) as resp:
+        data = json.loads(resp.read())
+    return data.get("tag_name", "").lstrip("v")
+
+
+def check_for_update(cfg):
+    if not cfg.get("update_check", True):
+        return None
+    path = get_update_cache_path()
+    cached = read_update_cache(path, cfg.get("update_interval", UPDATE_CHECK_INTERVAL))
+    if cached:
+        latest = cached.get("latest", "")
+        if latest and parse_version(latest) > parse_version(VERSION):
+            return latest
+        return None
+    try:
+        latest = fetch_latest_version()
+        write_update_cache(path, latest)
+        if latest and parse_version(latest) > parse_version(VERSION):
+            return latest
+    except Exception:
+        write_update_cache(path, "")
+    return None
+
+
+def do_update():
+    script_dir = Path(__file__).resolve().parent
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(script_dir), "pull"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode == 0:
+            print(result.stdout.strip())
+        else:
+            print(f"Update failed:\n{result.stderr.strip()}")
+    except Exception as e:
+        print(f"Update failed: {e}")
 
 
 # --- Git ---
@@ -370,6 +460,13 @@ def render_plan(usage, plan, ctx, cfg):
     return plan or None
 
 
+def render_update(usage, plan, ctx, cfg):
+    latest = check_for_update(cfg)
+    if not latest:
+        return None
+    return f"{DIM}ccbar update available{RESET}"
+
+
 RENDERERS = {
     "git": render_git,
     "cwd": render_cwd,
@@ -379,6 +476,7 @@ RENDERERS = {
     "context": render_context,
     "credits": render_credits,
     "plan": render_plan,
+    "update": render_update,
 }
 
 
@@ -445,6 +543,16 @@ def main():
 
     if "--version" in sys.argv:
         print(f"ccbar {VERSION}")
+        cfg = load_config()
+        latest = check_for_update(cfg)
+        if latest:
+            script_dir = Path(__file__).resolve().parent
+            print(f"Update available: {VERSION} -> {latest}")
+            print(f"Run: git -C {script_dir} pull")
+        return
+
+    if "--update" in sys.argv:
+        do_update()
         return
 
     if "--install" in sys.argv:

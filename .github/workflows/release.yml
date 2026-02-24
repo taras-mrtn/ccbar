@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      notes:
+        description: "Release notes (optional, uses auto-generated if empty)"
+        required: false
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get current version
+        id: current
+        run: |
+          version=$(grep -oP 'VERSION = "\K[^"]+' ccbar.py)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version
+        id: bump
+        run: |
+          IFS='.' read -r major minor patch <<< "${{ steps.current.outputs.version }}"
+          case "${{ inputs.bump }}" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+          new="${major}.${minor}.${patch}"
+          echo "version=$new" >> "$GITHUB_OUTPUT"
+
+      - name: Update VERSION in ccbar.py
+        run: |
+          sed -i "s/VERSION = \".*\"/VERSION = \"${{ steps.bump.outputs.version }}\"/" ccbar.py
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ccbar.py
+          git commit -m "Bump version to ${{ steps.bump.outputs.version }}"
+          git push
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NOTES="${{ inputs.notes }}"
+          if [ -n "$NOTES" ]; then
+            gh release create "v${{ steps.bump.outputs.version }}" \
+              --title "v${{ steps.bump.outputs.version }}" \
+              --notes "$NOTES"
+          else
+            gh release create "v${{ steps.bump.outputs.version }}" \
+              --title "v${{ steps.bump.outputs.version }}" \
+              --generate-notes
+          fi
