@@ -66,6 +66,8 @@ BAR_STYLES = {
     "pipes": ("\u2503", "\u254c"),          # ┃ ╌
     "braille": ("\u28ff", "\u2880"),        # ⣿ ⢀
     "ascii": ("#", "-"),                    # # -
+    "mini": ("\u25aa", "\u25ab"),           # ▪ ▫  (small squares, lighter weight)
+    "bullets": ("\u2022", "\u25e6"),        # • ◦  (bullet + white bullet, circular)
 }
 
 THEMES = {

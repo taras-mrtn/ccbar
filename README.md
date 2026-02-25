@@ -79,6 +79,8 @@ On first run, `config.json` is created next to `ccbar.py`:
 | `pipes` | `┃┃┃╌╌╌╌╌` |
 | `braille` | `⣿⣿⣿⢀⢀⢀⢀⢀` |
 | `ascii` | `###-----` |
+| `mini` | `▪▪▪▫▫▫▫▫` |
+| `bullets` | `•••◦◦◦◦◦` |
 
 ### Themes
 
