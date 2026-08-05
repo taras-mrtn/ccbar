@@ -307,7 +307,7 @@ def get_git_info(cwd):
         return None, None
     try:
         branch_r = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            ["git", "--no-optional-locks", "rev-parse", "--abbrev-ref", "HEAD"],
             capture_output=True, text=True, timeout=3, cwd=cwd,
         )
         if branch_r.returncode != 0:
@@ -315,7 +315,7 @@ def get_git_info(cwd):
         branch = branch_r.stdout.strip()
 
         status_r = subprocess.run(
-            ["git", "status", "--porcelain"],
+            ["git", "--no-optional-locks", "status", "--porcelain"],
             capture_output=True, text=True, timeout=3, cwd=cwd,
         )
         if status_r.returncode != 0:
