@@ -30,41 +30,58 @@ jobs:
           version=$(grep -oP 'VERSION = "\K[^"]+' ccbar.py)
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      # Inputs and step outputs are passed through `env` rather than
+      # interpolated into the script body: `${{ ... }}` is substituted as raw
+      # shell source, so text containing backticks or $(...) would execute.
       - name: Bump version
         id: bump
+        env:
+          CURRENT: ${{ steps.current.outputs.version }}
+          BUMP: ${{ inputs.bump }}
         run: |
-          IFS='.' read -r major minor patch <<< "${{ steps.current.outputs.version }}"
-          case "${{ inputs.bump }}" in
+          IFS='.' read -r major minor patch <<< "$CURRENT"
+          case "$BUMP" in
             major) major=$((major + 1)); minor=0; patch=0 ;;
             minor) minor=$((minor + 1)); patch=0 ;;
             patch) patch=$((patch + 1)) ;;
+            *) echo "Unknown bump type: $BUMP" >&2; exit 1 ;;
           esac
           new="${major}.${minor}.${patch}"
           echo "version=$new" >> "$GITHUB_OUTPUT"
 
       - name: Update VERSION in ccbar.py
+        env:
+          NEW_VERSION: ${{ steps.bump.outputs.version }}
         run: |
-          sed -i "s/VERSION = \".*\"/VERSION = \"${{ steps.bump.outputs.version }}\"/" ccbar.py
+          sed -i "s/VERSION = \".*\"/VERSION = \"$NEW_VERSION\"/" ccbar.py
 
       - name: Commit version bump
+        id: commit
+        env:
+          NEW_VERSION: ${{ steps.bump.outputs.version }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ccbar.py
-          git commit -m "Bump version to ${{ steps.bump.outputs.version }}"
+          git commit -m "Bump version to $NEW_VERSION"
           git push
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_VERSION: ${{ steps.bump.outputs.version }}
+          TARGET_SHA: ${{ steps.commit.outputs.sha }}
+          NOTES: ${{ inputs.notes }}
         run: |
-          NOTES="${{ inputs.notes }}"
           if [ -n "$NOTES" ]; then
-            gh release create "v${{ steps.bump.outputs.version }}" \
-              --title "v${{ steps.bump.outputs.version }}" \
+            gh release create "v$NEW_VERSION" \
+              --target "$TARGET_SHA" \
+              --title "v$NEW_VERSION" \
               --notes "$NOTES"
           else
-            gh release create "v${{ steps.bump.outputs.version }}" \
-              --title "v${{ steps.bump.outputs.version }}" \
+            gh release create "v$NEW_VERSION" \
+              --target "$TARGET_SHA" \
+              --title "v$NEW_VERSION" \
               --generate-notes
           fi
